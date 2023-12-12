@@ -7,6 +7,8 @@ export default function RegisterUser() {
     identity: "",
     email: "",
     phone: "",
+    password: "",
+    confirmPassword: "",
     organization: "",
     otherOrganization: "",
     organizationAddress: "",
@@ -14,24 +16,22 @@ export default function RegisterUser() {
 
   const [clients, setClients] = useState([]);
   const [errors, setErrors] = useState({});
+  const [successModal, setSuccessModal] = useState(false);
 
   useEffect(() => {
     fetchOrgs();
   }, []);
 
   const fetchOrgs = async () => {
-    const orgs = await axios
-      .get("http://localhost:8080/api/v1/client")
-      .then((response) => {
-        return response.data.data.map((e) => e.name);
-      })
-      .catch((error) => {
-        console.log(error.response.data);
-      });
-
-    setClients(orgs);
-
+    try {
+      const response = await axios.get("http://localhost:8080/api/v1/client");
+      const orgs = response.data.data.map((e) => e.name);
+      setClients(orgs);
+    } catch (error) {
+      console.log(error.response.data);
+    }
   };
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData({
@@ -52,6 +52,15 @@ export default function RegisterUser() {
     if (!formData.phone) {
       newErrors.phone = "Phone is required";
     }
+    if (!formData.email) {
+      newErrors.email = "Email address is required";
+    }
+    if (!formData.password) {
+      newErrors.password = "Password is required";
+    }
+    if (formData.password !== formData.confirmPassword) {
+      newErrors.confirmPassword = "Passwords do not match";
+    }
     if (!formData.organization) {
       newErrors.organization = "Organization is required";
     } else if (
@@ -61,19 +70,38 @@ export default function RegisterUser() {
       newErrors.otherOrganization = "Please specify the organization";
     }
     if (formData.organization === "Other" && !formData.organizationAddress) {
-      newErrors.organizationAddress = "Please provide the organization address";
+      newErrors.organizationAddress =
+        "Please provide the organization address";
     }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
     if (validateForm()) {
-      // Handle form submission here
-      console.log(formData);
+      try {
+        const response = await axios.post(
+          "http://localhost:8080/api/v1/user",
+          formData,
+          {
+            headers: {
+              "Content-Type": "application/json",
+            },
+          }
+        );
+
+        // Show success modal
+        setSuccessModal(true);
+
+        // You may want to perform additional actions based on the response
+        console.log(response.data);
+      } catch (error) {
+        // Handle errors, for example, log the error to the console
+        console.error("Error submitting form:", error);
+      }
     }
   };
 
@@ -103,6 +131,50 @@ export default function RegisterUser() {
             />
             {errors.fullName && (
               <p className="text-red-600 mt-1">{errors.fullName}</p>
+            )}
+          </div>
+
+          {/* ... (other form fields) */}
+
+          <div className="mb-4">
+            <label
+              htmlFor="password"
+              className="block text-sm font-bold text-gray-600"
+            >
+              Password
+            </label>
+            <input
+              id="password"
+              name="password"
+              type="password"
+              autoComplete="new-password"
+              required
+              className="w-full px-4 py-2 border rounded-lg text-gray-700 bg-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-600"
+              onChange={handleChange}
+            />
+            {errors.password && (
+              <p className="text-red-600 mt-1">{errors.password}</p>
+            )}
+          </div>
+
+          <div className="mb-4">
+            <label
+              htmlFor="confirmPassword"
+              className="block text-sm font-bold text-gray-600"
+            >
+              Confirm Password
+            </label>
+            <input
+              id="confirmPassword"
+              name="confirmPassword"
+              type="password"
+              autoComplete="new-password"
+              required
+              className="w-full px-4 py-2 border rounded-lg text-gray-700 bg-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-600"
+              onChange={handleChange}
+            />
+            {errors.confirmPassword && (
+              <p className="text-red-600 mt-1">{errors.confirmPassword}</p>
             )}
           </div>
 
@@ -248,6 +320,24 @@ export default function RegisterUser() {
             </button>
           </div>
         </form>
+
+        {/* Success Modal */}
+        {successModal && (
+          <div className="fixed top-0 left-0 w-full h-full flex items-center justify-center bg-gray-800 bg-opacity-75">
+            <div className="bg-white p-8 rounded-lg shadow-lg">
+              <h2 className="text-2xl font-bold text-indigo-600 mb-4">
+                Registration Successful
+              </h2>
+              <p>Your registration was successful. Thank you!</p>
+              <button
+                className="mt-4 px-4 py-2 bg-indigo-600 text-white rounded-lg"
+                onClick={() => setSuccessModal(false)}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
